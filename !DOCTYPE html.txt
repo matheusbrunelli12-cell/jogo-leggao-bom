@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Letreco Infinito</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * {
+            font-family: 'Inter', sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+
+        body {
+            background-color: #121213;
+            color: #ffffff;
+        }
+
+        .tile {
+            width: 100%;
+            max-width: 62px;
+            aspect-ratio: 1;
+            border: 2px solid #3a3a3c;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            border-radius: 6px;
+            transition: border-color 0.15s ease;
+        }
+
+        .tile.pop {
+            animation: pop 0.1s ease-in-out;
+            border-color: #565758;
+        }
+
+        @keyframes pop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.12); }
+            100% { transform: scale(1); }
+        }
+
+        .tile.flip {
+            animation: flip 0.5s ease forwards;
+        }
+
+        @keyframes flip {
+            0% { transform: rotateX(0deg); }
+            50% { transform: rotateX(90deg); }
+            100% { transform: rotateX(0deg); }
+        }
+
+        .row-shake {
+            animation: shake 0.4s ease-in-out;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20% { transform: translateX(-8px); }
+            40% { transform: translateX(8px); }
+            60% { transform: translateX(-5px); }
+            80% { transform: translateX(5px); }
+        }
+
+        /* Cores oficiais Termo / Wordle */
+        .correct {
+            background-color: #538d4e !important;
+            border-color: #538d4e !important;
+            color: #ffffff !important;
+        }
+
+        .present {
+            background-color: #b59f3b !important;
+            border-color: #b59f3b !important;
+            color: #ffffff !important;
+        }
+
+        .absent {
+            background-color: #3a3a3c !important;
+            border-color: #3a3a3c !important;
+            color: #ffffff !important;
+        }
+
+        .key-btn {
+            background-color: #818384;
+            color: #ffffff;
+            font-weight: 700;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: background-color 0.2s ease, opacity 0.2s ease, transform 0.1s ease;
+            height: 54px;
+            font-size: 0.95rem;
+        }
+
+        .key-btn:active {
+            opacity: 0.7;
+            transform: scale(0.95);
+        }
+
+        .key-btn.correct { background-color: #538d4e; }
+        .key-btn.present { background-color: #b59f3b; }
+        .key-btn.absent { background-color: #3a3a3c; color: #787c7e; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between items-center px-2 py-3 sm:py-6 select-none overflow-x-hidden">
+
+    <header class="w-full max-w-md flex justify-between items-center border-b border-zinc-800 pb-3 mb-2">
+        <button id="btn-help" class="p-2 text-zinc-400 hover:text-white transition" title="Como Jogar">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        </button>
+        <div class="text-center">
+            <h1 class="text-2xl sm:text-3xl font-extrabold tracking-wider bg-gradient-to-r from-green-400 to-yellow-400 bg-clip-text text-transparent">
+                LETRECO <span class="text-xs px-2 py-0.5 rounded bg-zinc-800 text-zinc-300 font-semibold align-middle">INFINITO</span>
+            </h1>
+        </div>
+        <button id="btn-stats" class="p-2 text-zinc-400 hover:text-white transition" title="Estatísticas">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+        </button>
+    </header>
+
+    <div id="toast" class="fixed top-16 z-50 bg-white text-zinc-900 px-4 py-2 rounded-lg font-bold shadow-2xl opacity-0 pointer-events-none transform -translate-y-2 transition-all duration-300">
+        Mensagem
+    </div>
+
+    <main class="flex-1 flex flex-col justify-center items-center w-full max-w-xs sm:max-w-sm my-auto">
+        <div id="board" class="grid grid-rows-6 gap-1.5 w-full"></div>
+        
+        <div id="next-game-panel" class="hidden flex-col items-center mt-4 w-full animate-fade-in">
+            <div id="word-reveal" class="text-base text-zinc-300 mb-2 font-semibold"></div>
+            <button id="btn-next" class="w-full py-3 bg-green-600 hover:bg-green-500 text-white font-bold rounded-lg shadow-lg active:scale-95 transition flex items-center justify-center gap-2">
+                <span>PRÓXIMA PALAVRA</span>
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+            </button>
+        </div>
+    </main>
+
+    <footer class="w-full max-w-md mt-auto pt-2">
+        <div class="flex flex-col gap-1.5">
+            <div class="flex justify-center gap-1 w-full" id="kbd-row-1"></div>
+            <div class="flex justify-center gap-1 w-full" id="kbd-row-2"></div>
+            <div class="flex justify-center gap-1 w-full" id="kbd-row-3"></div>
+        </div>
+    </footer>
+
+    <div id="modal-stats" class="fixed inset-0 bg-black/75 flex items-center justify-center p-4 z-50 hidden opacity-0 transition-opacity">
+        <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-6 w-full max-w-sm text-center relative shadow-2xl">
+            <button class="close-modal absolute top-3 right-3 text-zinc-400 hover:text-white text-xl font-bold">✕</button>
+            <h2 class="text-xl font-bold mb-4 tracking-wide text-zinc-100">ESTATÍSTICAS</h2>
+            
+            <div class="grid grid-cols-4 gap-2 mb-6">
+                <div class="bg-zinc-800 p-2 rounded-lg">
+                    <div id="stat-played" class="text-2xl font-black text-white">0</div>
+                    <div class="text-[10px] text-zinc-400 uppercase font-semibold">Jogos</div>
+                </div>
+                <div class="bg-zinc-800 p-2 rounded-lg">
+                    <div id="stat-winrate" class="text-2xl font-black text-white">0%</div>
+                    <div class="text-[10px] text-zinc-400 uppercase font-semibold">Vitórias</div>
+                </div>
+                <div class="bg-zinc-800 p-2 rounded-lg">
+                    <div id="stat-streak" class="text-2xl font-black text-green-400">0</div>
+                    <div class="text-[10px] text-zinc-400 uppercase font-semibold">Sequência</div>
+                </div>
+                <div class="bg-zinc-800 p-2 rounded-lg">
+                    <div id="stat-maxstreak" class="text-2xl font-black text-yellow-400">0</div>
+                    <div class="text-[10px] text-zinc-400 uppercase font-semibold">Melhor</div>
+                </div>
+            </div>
+
+            <button id="btn-modal-next" class="w-full py-2.5 bg-green-600 hover:bg-green-500 text-white font-bold rounded-lg transition hidden">
+                JOGAR NOVAMENTE
+            </button>
+        </div>
+    </div>
+
+    <div id="modal-help" class="fixed inset-0 bg-black/75 flex items-center justify-center p-4 z-50 hidden opacity-0 transition-opacity">
+        <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-6 w-full max-w-sm relative shadow-2xl text-left">
+            <button class="close-modal absolute top-3 right-3 text-zinc-400 hover:text-white text-xl font-bold">✕</button>
+            <h2 class="text-xl font-bold mb-3 text-center">COMO JOGAR</h2>
+            <p class="text-sm text-zinc-300 mb-3">Adivinhe a palavra secreta em <strong>6 tentativas</strong>. Cada tentativa deve ser uma <strong>palavra válida de 5 letras</strong> do português.</p>
+            <p class="text-sm text-zinc-300 mb-4">A cor das peças indica o quão perto você esteve:</p>
+
+            <div class="space-y-3 border-t border-zinc-800 pt-3">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded font-bold flex items-center justify-center correct text-white text-sm">A</div>
+                    <div class="text-xs text-zinc-300">A letra <strong>A</strong> faz parte da palavra e está no <strong>lugar correto</strong>.</div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded font-bold flex items-center justify-center present text-white text-sm">O</div>
+                    <div class="text-xs text-zinc-300">A letra <strong>O</strong> faz parte da palavra, mas em <strong>outro lugar</strong>.</div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded font-bold flex items-center justify-center absent text-white text-sm">E</div>
+                    <div class="text-xs text-zinc-300">A letra <strong>E</strong> <strong>não faz parte</strong> da palavra.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Dicionário Massivo de Palavras Reais de 5 Letras (sem acentos)
+        const RAW_WORDS = [
+            "TERRA","PODER","MUNDO","TERMO","FOGO","LIVRO","FESTA","PORTA","MENTE","FLORA",
+            "NORTE","SOLAR","TEXTO","CARRO","AMIGO","CAMPO","SAUDE","CANTO","JUSTO","NOBRE",
+            "FORTE","BRAVO","VAPOR","MANHA","VENTO","TEMPO","GRUPO","CHUVA","PEDRA","COBRA",
+            "MESA","NOITE","PEIXE","DADOS","SANTO","CORPO","PLANO","SABER","FAUNA","LIONA",
+            "ARTE","AUREO","BANDO","BARCO","BELEZA","BLOCO","BRUTO","CABO","CAIXA","CALMA",
+            "CARGA","CELLO","CERTO","CHAVE","CLARO","CLUBE","CORTE","CRIME","DENTE","DISCO",
+            "DRAMA","DUELO","DUPLA","ETAPA","EXAME","FATO","FELIZ","FERRO","FILME","FINAL",
+            "FOLHA","FONTE","FORMA","FRUTO","GATOS","GLOBO","GRAVE","HOTEL","IDEIA","IMAGE",
+            "JOVEM","JUIZ","LANCE","LEITE","LIMAO","LINHA","LITRO","LUTA","MADRE","MAGIA",
+            "MAJOR","MARCA","MASSA","METRO","MIDIA","MILHO","MOTOR","MUSEU","NEVE","NIVEL",
+            "NUVEM","OCEAN","OLHOS","ORDEM","OESTE","OURO","PACTO","PADRE","PAGINA","PALMA",
+            "PARTE","PASSO","PEITO","PERTO","PIANO","PISTA","PLACA","PODIO","PONTE","PONTO",
+            "PRAIA","PRATO","PRECO","PROVA","RADIO","RAIO","RAMO","RAZAO","REGRA","REINO",
+            "RITMO","ROBO","ROCHA","RODA","ROUPA","RURAL","SABOR","SALTO","SANGR","SERIE",
+            "SINAL","SONHO","SORTE","TERNO","TIGRE","TINTA","TITULO","TORRE","TRACO","TRENO",
+            "TROCA","URBANO","USINA","VALE","VALOR","VASO","VERAO","VERDE","VISAO","VISTA",
+            "VITAL","VOGAL","VOLTA","ZEBRA","ZONA","ABRIL","AGUDA","ALMA","ALTAR","ALUNO",
+            "ANJO","ANIMA","APELO","AROMA","ASILO","ATLAS","AUTOR","AVISO","AVIAO","BAILE",
+            "BALAO","BANCO","BARAO","BASICO","BATIDA","BEBIDA","BICHO","BOTAO","BRANCO","BREVE",
+            "BRILHO","BRISA","CABRA","CACAO","CAFES","CALOR","CAMPOS","CANAL","CANETA","CARA",
+            "CARNE","CARTA","CASAL","CASO","CERCA","CHARME","CHEFE","CIGANO","CINZA","CIRCO",
+            "CLIMA","COLUNA","COMETA","CONDE","CONTA","CORAL","CORDA","CORVO","COSTA","CRAVO",
+            "CREME","CULTURA","DANCA","DENTRO","DESAFIO","DIARIO","DIETA","DITADO","DOGMA","DONO",
+            "DUQUE","EBANO","EFEITO","EFICAZ","ELITE","EMBLEMA","ENERGIA","ENSAIO","ENTRA","EPICA",
+            "ESPACO","ESPORTE","ESTILO","ETICA","FABULA","FALTA","FAROL","FEIRA","FIBRA","FROTA",
+            "GALHO","GENIO","GELO","GRADE","GRANA","GURIA","HABITO","HORA","HUMOR","ICONE",
+            "IDADE","IGREJA","ILHA","INDICE","IRMÃO","IRMAO","JANELA","JARDIM","JOGO","JUROS",
+            "LAGO","LAPIS","LAVA","LEAO","LEI","LIVRE","LIXO","LOJA","LOUCO","LUZ",
+            "MALA","MALAJA","MANIA","MAPA","MAR","MARGEM","MEDO","MEIO","MEL","MEMORIA",
+            "MESMO","METODO","MINA","MOMENTO","MORRO","MOTO","MUDANCA","MUSICA","MUTO","NACAO",
+            "NASCER","NATAL","NATUREZA","NAVIO","NEGOCIO","NINHO","NOME","NOTA","NOVA","OBRA",
+            "OLHO","ONDA","OPCAO","ORIGEM","OSSOS","OUTRO","PADRAO","PAIS","PAXAO","PASTA",
+            "PASTO","PATIO","PAUSA","PELE","PENA","PESSOAL","PILHA","PINHO","PISTA","POETA",
+            "POLO","PORTAO","POVO","PRATA","PRESO","PRIMO","PROJETO","PROSA","PURO","QUEDA",
+            "QUART","QUERER","RAIZ","RAMO","RANCHO","RAPA","RAPA","REDE","REINO","RESTA",
+            "RISCO","RITMO","RUA","SABIO","SABOR","SALA","SALDO","SALMO","SANGUE","SANTO",
+            "SAPATO","SAUDADE","CENA","SINAL","SOCIEDADE","SOLO","SONHO","SORTE","SUL","TIPO",
+            "TORTA","TRABALHO","TREM","TRILHA","TRONO","TURMA","UNIÃO","UNIAO","URSO","USO",
+            "VACA","VALE","VENENO","VERBA","VERBO","VERSO","VIAGEM","VIDA","VIDRO","VINHO",
+            "VIOLA","VOTO","VOZ","VOZES","XADREZ","XICARA","AMAR","ANDAR","BEBER","CORRER",
+            "COMER","DORMIR","FALAR","FAZER","GOSTAR","LAVAR","LER","LUTR","OBTER","OUVIR",
+            "PENSAR","PEDIR","PODER","PONER","PUXAR","SABER","SAIR","SENTIR","TOCAR","VALER",
+            "VENDA","VER","VIR","VOLTAR","VOAR","ABRIR","ACHAR","ACOLHER","AGIR","AJUDAR",
+            "ALCANCAR","ALTAR","AMEACAR","ANDAR","APONTAR","APROVAR","ARDER","ASPAR","ATIRAR","ATRAIR",
+            "AUMENTAR","AVANCAR","BAIXAR","BATER","BUSCAR","CABER","CAMINHAR","CANTAR","CAPTAR","CARREGAR",
+            "CESSAR","CHAMAR","CHEGAR","CHOVER","COBRIR","COLOCAR","COMEÇAR","COMECAR","COMPARAR","COMPRAR",
+            "CONCORDAR","CONDUZIR","CONFIAR","CONHECER","CONSEGUIR","CONTAR","CORRER","CORTAR","CRESCER","CRIAR",
+            "CUIDAR","CURAR","DANÇAR","DANCAR","DAR","DECIDIR","DECLARAR","DEFENDER","DEIXAR","DEMORAR",
+            "DENTRO","DEPENDER","DERRUBAR","DESCE","DESEJAR","DESENHAR","DESTRUI","DEVER","DETER","DITAR",
+            "DIVIDIR","DIZER","DOER","DONO","DURAR","ELEGER","ENVIAR","ESCOLHER","ESCONDER","ESCREVER",
+            "ESPERAR","ESQUECER","ESTAR","EXISTIR","EXPLICAR","FALTAR","FECHAR","FICAR","FINGIR","GANHAR",
+            "GIRAR","GUARDAR","GUIAR","HAVER","INICIAR","IR","JOGAR","JULGAR","LANÇAR","LANCAR",
+            "LEMBRAR","LEVAR","LIMPAR","LUTAR","MANDAR","MARCAR","MOSTRAR","MOVER","MUDAR","NASCER",
+            "OLHAR","PARAR","PARTIR","PASSAR","PENSAR","PERDER","PERMITIR","PINGAR","PINTAR","PLANEJAR",
+            "PLANTAR","PODER","PRATICAR","PRECISAR","PREPARAR","PROVAR","PUXAR","QUEBRAR","QUEIMAR","QUERER",
+            "RECEBER","RECUSAR","RESPONDER","RIR","ROBAR","ROMPER","SABER","SALVAR","SEGUIR","SENTAR",
+            "SUBIR","TIRAR","TOMAR","TRAZER","TROCAR","USAR","VALER","VENCER","VIVER","ACEITAR","ACHAR",
+            "ACOMPANHAR","ACREDITAR","AFIRMAR","AJUDAR","ALCANÇAR","ALCANCAR","ALMOÇAR","ALMOCAR","AMEAÇAR","AMEACAR",
+            "ANALISAR","ANDAR","ANUNCIAR","APARECER","APRESENTAR","APROVEITAR","AQUECER","ARMOR","ARRANCAR","ARRUMAR",
+            "ATENDER","ATINGIR","AUMENTAR","AVISAR","BAIXAR","BALANÇAR","BALANCAR","BATIZAR","BEIJAR","BRINCAR",
+            "CALAR","CAMINHAR","CANCELAR","CANTAR","CARREGAR","CAUSAR","CEDER","CELEBRAR","CHEGAR","CHORAR",
+            "COBRAR","COLOCAR","COMBINAR","COMEÇAR","COMECAR","COMETER","COMPARAR","COMPREENDER","CONCORDAR","CONFIRMAR",
+            "CONHECER","CONSEGUIR","CONSTRUIR","CONSULTAR","CONTAR","CONTINUAR","CONTROLAR","CONVIDAR","CORTAR","COSTUMAR",
+            "COZINHAR","CRIAR","CUIDAR","CULTIVAR","CURAR","DAR","DECIDIR","DECLARAR","DEFENDER","DEIXAR",
+            "DEMONSTRAR","DEPENDER","DEPOSITAR","DERROTA","DERRUBAR","DESCE","DESEJAR","DESENVOLVER","DESEJAR","DESENHAR",
+            "DESLIGAR","DESTRUI","DETALHAR","DETERMINAR","DEVER","DIRECIONAR","DISCUTIR","DISPOR","DIVIDIR","DIZER",
+            "DOMINAR","DURAR","ELABORAR","ELEGER","ELIMINAR","EMPREGAR","ENCONTRAR","ENFRENTAR","ENSINAR","ENTENDER",
+            "ENTRAR","ENTREGAR","ENVIAR","ESCOLHER","ESCONDER","ESCREVER","ESCUTAR","ESPERAR","ESQUECER","ESTABELECER",
+            "ESTUDAR","EXIGIR","EXISTIR","EXPLICAR","EXPOR","EXPRESSAR","FACILITAR","FALAR","FECHAR","FICAR",
+            "FILMAR","FINALIZAR","FIRMAR","FIXAR","FORNECER","FORMAR","GANHAR","GARANTIR","GIRAR","GOSTAR",
+            "GOVERNAR","GUARDAR","HABITAR","ILUMINAR","IMAGINAR","IMPEDIR","IMPOR","INCLUIR","INDICAR","INFORMAR",
+            "INICIAR","INSPIRAR","INSTALAR","INTERESSAR","INTERPRETAR","INVENTAR","INVESTIR","JOGAR","JULGAR","JUSTIFICAR",
+            "LANÇAR","LANCAR","LEMBRAR","LER","LEVAR","LIBERAR","LIMPAR","LIGAR","LIMITAR","LIDERAR",
+            "LUTAR","MANTER","MARCAR","MEDIR","MELHORAR","MENCIONAR","METER","MISTURAR","MONTAR","MOSTRAR",
+            "MOVER","MUDAR","NASCER","NEGAR","NEGOCIAR","NOTAR","OBSERVAR","OBTER","OCUPAR","OFERECER",
+            "OLHAR","OPERAR","ORGANIZAR","Ouvir","PAGAR","PARAR","PARECER","PARTICIPAR","PARTIR","PASSAR",
+            "PEDIR","PENSAR","PERCEBER","PERDER","PERDONAR","PERMITIR","PESQUISAR","PINTAR","PLANEJAR","PLANTAR",
+            "PRATICAR","PRECISAR","PREFERIR","PREPARAR","PRESENÇAR","PRESENCAR","PRESSIONAR","PRETENDER","PREVENIR","PROCURAR",
+            "PRODUZIR","PROIBIR","PROMETER","PROPOR","PROTEGER","PROVAR","PUBLICAR","PUXAR","QUALIFICAR","QUEBRAR",
+            "QUEIMAR","QUERER","REALIZAR","RECEBER","RECONHECER","RECUPERAR","RECUSAR","REDUZIR","REFLETIR","REGISTRAR",
+            "RELAÇAR","RELACAR","RELEVAR","REMANS","RENOVAR","RESPONDER","REUNIR","REVELAR","ROBAR","ROMPER",
+            "SABER","SACAR","SALVAR","SATISFAZER","SEGUIR","SELECIONAR","SENTAR","SENTIR","SERVIR","SIGNIFICAR",
+            "SOLICITAR","SOLUCIONAR","SUBIR","SUGERIR","SUJEITAR","SUPORTAR","SURGIR","SUSTENTAR","TENTAR","TERMINAR",
+            "TESTAR","TIRAR","TOCAR","TOMAR","TRABALHAR","TRATAR","TRAZER","TROCAR","UNIR","USAR",
+            "UTILIZAR","VALER","VENDER","VER","VERIFICAR","VESTIR","VIAJAR","VISITAR","VIVER","VOAR",
+            "VOLTAR","AFETO","AGUDO","ALUNO","AMADO","AMPLO","ANIMA","ANUAL","AROMA","ASILO",
+            "ASTRO","ATIVO","AUDAC","AUTOR","BANCO","BARAO","BASICO","BELO","BOMBA","BREVE",
+            "BRUTO","CABRA","CALMO","CAMIN","CAMPO","CANAL","CAPAZ","CARGO","CASTO","CERTO",
+            "CIVIL","CLARO","CURTO","DIREITO","DOCE","DUPLO","DURAO","ETICO","EXATO","FACIL",
+            "FALSO","FELIZ","FEROZ","FINO","FIRME","FORTE","FRANCO","FRESCO","FRIO","FUTIL",
+            "GERAL","GIGANTE","GORDO","GRAVE","HABIL","IGUAL","INSER","JENS","JOVEM","JURID",
+            "JUSTO","LEAL","LENTO","LIVRE","LOUCO","MAGRO","MAIOR","MAU","MELHOR","MENOR",
+            "MORTAL","NATO","NOBRE","NOVO","OUTRO","PRIMEIRO","PRONTO","PROPRIO","PURO","RARO",
+            "REAL","RICHO","RICO","SABIO","SANTO","SECO","SEGURO","SENIOR","SERIO","SIMPLES",
+            "SUAVE","SURDO","SUTIL","TARDIO","TENRO","TORTO","UNIC","URBANO","UTIL","VAZIO",
+            "VELHO","VELOZ","VERDADEIRO","VERDE","VERMELHO","VITAL","VIVO"
+        ];
+
+        // Processamento para obter uma lista única e rigorosa de palavras com exatamente 5 letras
+        const WORDS = Array.from(new Set(
+            RAW_WORDS.map(w => 
+                w.normalize("NFD")
+                 .replace(/[\u0300-\u036f]/g, "")
+                 .toUpperCase()
+                 .trim()
+            ).filter(w => w.length === 5 && /^[A-Z]{5}$/.test(w))
+        ));
+
+        const BOARD_ROWS = 6;
+        const WORD_LENGTH = 5;
+
+        let targetWord = "";
+        let currentRow = 0;
+        let currentTile = 0;
+        let isGameOver = false;
+        let boardState = Array(BOARD_ROWS).fill("").map(() => Array(WORD_LENGTH).fill(""));
+        let letterStatus = {};
+
+        let stats = JSON.parse(localStorage.getItem("letreco_infinito_stats")) || {
+            played: 0,
+            wins: 0,
+            streak: 0,
+            maxStreak: 0
+        };
+
+        const KEYBOARD_ROWS = [
+            ["Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P"],
+            ["A", "S", "D", "F", "G", "H", "J", "K", "L"],
+            ["ENTER", "Z", "X", "C", "V", "B", "N", "M", "BACKSPACE"]
+        ];
+
+        window.onload = () => {
+            initBoard();
+            initKeyboard();
+            setupEventListeners();
+            startNewGame();
+        };
+
+        function initBoard() {
+            const boardEl = document.getElementById("board");
+            boardEl.innerHTML = "";
+            for (let r = 0; r < BOARD_ROWS; r++) {
+                const rowEl = document.createElement("div");
+                rowEl.className = "grid grid-cols-5 gap-1.5 w-full";
+                rowEl.id = `row-${r}`;
+                for (let c = 0; c < WORD_LENGTH; c++) {
+                    const tileEl = document.createElement("div");
+                    tileEl.className = "tile";
+                    tileEl.id = `tile-${r}-${c}`;
+                    rowEl.appendChild(tileEl);
+                }
+                boardEl.appendChild(rowEl);
+            }
+        }
+
+        function initKeyboard() {
+            KEYBOARD_ROWS.forEach((row, idx) => {
+                const rowEl = document.getElementById(`kbd-row-${idx + 1}`);
+                rowEl.innerHTML = "";
+                row.forEach(key => {
+                    const btn = document.createElement("button");
+                    btn.id = `key-${key}`;
+                    
+                    if (key === "ENTER") {
+                        btn.className = "key-btn flex-[1.5] text-xs sm:text-sm";
+                        btn.textContent = "ENTER";
+                    } else if (key === "BACKSPACE") {
+                        btn.className = "key-btn flex-[1.5]";
+                        btn.innerHTML = `<svg class="w-5 h-5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M3 12l6.414 6.414a2 2 0 001.414.586H19a2 2 0 002-2V7a2 2 0 002-2H10.828a2 2 0 00-1.414.586L3 12z"></path></svg>`;
+                    } else {
+                        btn.className = "key-btn flex-1";
+                        btn.textContent = key;
+                    }
+
+                    btn.addEventListener("click", () => handleKeyPress(key));
+                    rowEl.appendChild(btn);
+                });
+            });
+        }
+
+        function startNewGame() {
+            const randomIndex = Math.floor(Math.random() * WORDS.length);
+            targetWord = WORDS[randomIndex];
+            
+            currentRow = 0;
+            currentTile = 0;
+            isGameOver = false;
+            boardState = Array(BOARD_ROWS).fill("").map(() => Array(WORD_LENGTH).fill(""));
+            letterStatus = {};
+
+            document.getElementById("next-game-panel").classList.add("hidden");
+
+            for (let r = 0; r < BOARD_ROWS; r++) {
+                for (let c = 0; c < WORD_LENGTH; c++) {
+                    const tile = document.getElementById(`tile-${r}-${c}`);
+                    tile.textContent = "";
+                    tile.className = "tile";
+                }
+            }
+
+            document.querySelectorAll(".key-btn").forEach(btn => {
+                btn.classList.remove("correct", "present", "absent");
+            });
+        }
+
+        function setupEventListeners() {
+            document.addEventListener("keydown", (e) => {
+                if (e.altKey || e.ctrlKey || e.metaKey) return;
+
+                if (e.key === "Enter") {
+                    handleKeyPress("ENTER");
+                } else if (e.key === "Backspace") {
+                    handleKeyPress("BACKSPACE");
+                } else {
+                    const letter = e.key.toUpperCase();
+                    if (/^[A-Z]$/.test(letter) && letter.length === 1) {
+                        handleKeyPress(letter);
+                    }
+                }
+            });
+
+            document.getElementById("btn-next").addEventListener("click", startNewGame);
+            document.getElementById("btn-modal-next").addEventListener("click", () => {
+                closeModal("modal-stats");
+                startNewGame();
+            });
+
+            document.getElementById("btn-stats").addEventListener("click", () => {
+                updateStatsUI();
+                openModal("modal-stats");
+            });
+
+            document.getElementById("btn-help").addEventListener("click", () => {
+                openModal("modal-help");
+            });
+
+            document.querySelectorAll(".close-modal").forEach(btn => {
+                btn.addEventListener("click", (e) => {
+                    const modal = e.target.closest(".fixed");
+                    if (modal) closeModal(modal.id);
+                });
+            });
+        }
+
+        function handleKeyPress(key) {
+            if (isGameOver) return;
+
+            if (key === "ENTER") {
+                submitGuess();
+            } else if (key === "BACKSPACE") {
+                deleteLetter();
+            } else if (/^[A-Z]$/.test(key)) {
+                addLetter(key);
+            }
+        }
+
+        function addLetter(letter) {
+            if (currentTile < WORD_LENGTH && currentRow < BOARD_ROWS) {
+                boardState[currentRow][currentTile] = letter;
+                const tile = document.getElementById(`tile-${currentRow}-${currentTile}`);
+                tile.textContent = letter;
+                tile.classList.add("pop");
+                currentTile++;
+            }
+        }
+
+        function deleteLetter() {
+            if (currentTile > 0) {
+                currentTile--;
+                boardState[currentRow][currentTile] = "";
+                const tile = document.getElementById(`tile-${currentRow}-${currentTile}`);
+                tile.textContent = "";
+                tile.classList.remove("pop");
+            }
+        }
+
+        function submitGuess() {
+            if (currentTile < WORD_LENGTH) {
+                showToast("Palavra incompleta");
+                shakeRow(currentRow);
+                return;
+            }
+
+            const guess = boardState[currentRow].join("");
+
+            // VALIDAÇÃO ESTRITA: Rejeita palpites que não sejam palavras reais do dicionário
+            if (!WORDS.includes(guess)) {
+                showToast("Palavra não reconhecida!");
+                shakeRow(currentRow);
+                return;
+            }
+
+            const targetLetters = targetWord.split("");
+            const guessLetters = guess.split("");
+            const rowStatuses = Array(WORD_LENGTH).fill("absent");
+
+            // Passagem 1: Letras no lugar correto (Verde)
+            for (let i = 0; i < WORD_LENGTH; i++) {
+                if (guessLetters[i] === targetLetters[i]) {
+                    rowStatuses[i] = "correct";
+                    targetLetters[i] = null;
+                }
+            }
+
+            // Passagem 2: Letras existentes em outra posição (Amarelo)
+            for (let i = 0; i < WORD_LENGTH; i++) {
+                if (rowStatuses[i] !== "correct") {
+                    const indexInTarget = targetLetters.indexOf(guessLetters[i]);
+                    if (indexInTarget !== -1) {
+                        rowStatuses[i] = "present";
+                        targetLetters[indexInTarget] = null;
+                    }
+                }
+            }
+
+            // Animação de virada sequencial
+            for (let i = 0; i < WORD_LENGTH; i++) {
+                const tile = document.getElementById(`tile-${currentRow}-${i}`);
+                const letter = guessLetters[i];
+                const status = rowStatuses[i];
+
+                setTimeout(() => {
+                    tile.classList.add("flip", status);
+
+                    if (!letterStatus[letter] || status === "correct" || (status === "present" && letterStatus[letter] !== "correct")) {
+                        letterStatus[letter] = status;
+                        const keyBtn = document.getElementById(`key-${letter}`);
+                        if (keyBtn) {
+                            keyBtn.className = `key-btn flex-1 ${status}`;
+                        }
+                    }
+
+                    if (i === WORD_LENGTH - 1) {
+                        checkGameOutcome(guess);
+                    }
+                }, i * 200);
+            }
+        }
+
+        function checkGameOutcome(guess) {
+            if (guess === targetWord) {
+                isGameOver = true;
+                stats.played++;
+                stats.wins++;
+                stats.streak++;
+                if (stats.streak > stats.maxStreak) stats.maxStreak = stats.streak;
+                saveStats();
+
+                setTimeout(() => {
+                    showToast("Excelente! 🎉");
+                    endGameUI(true);
+                }, 400);
+
+            } else if (currentRow === BOARD_ROWS - 1) {
+                isGameOver = true;
+                stats.played++;
+                stats.streak = 0;
+                saveStats();
+
+                setTimeout(() => {
+                    showToast(`A palavra era ${targetWord}`);
+                    endGameUI(false);
+                }, 400);
+
+            } else {
+                currentRow++;
+                currentTile = 0;
+            }
+        }
+
+        function endGameUI(isWin) {
+            const panel = document.getElementById("next-game-panel");
+            const reveal = document.getElementById("word-reveal");
+            reveal.textContent = isWin ? "Você acertou!" : `A palavra era: ${targetWord}`;
+            panel.classList.remove("hidden");
+
+            const modalNextBtn = document.getElementById("btn-modal-next");
+            modalNextBtn.classList.remove("hidden");
+
+            setTimeout(() => {
+                updateStatsUI();
+                openModal("modal-stats");
+            }, 1000);
+        }
+
+        function shakeRow(rowIdx) {
+            const rowEl = document.getElementById(`row-${rowIdx}`);
+            rowEl.classList.add("row-shake");
+            setTimeout(() => {
+                rowEl.classList.remove("row-shake");
+            }, 400);
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById("toast");
+            toast.textContent = msg;
+            toast.classList.remove("opacity-0", "-translate-y-2", "pointer-events-none");
+            toast.classList.add("opacity-100", "translate-y-0");
+
+            setTimeout(() => {
+                toast.classList.remove("opacity-100", "translate-y-0");
+                toast.classList.add("opacity-0", "-translate-y-2", "pointer-events-none");
+            }, 2000);
+        }
+
+        function saveStats() {
+            localStorage.setItem("letreco_infinito_stats", JSON.stringify(stats));
+        }
+
+        function updateStatsUI() {
+            document.getElementById("stat-played").textContent = stats.played;
+            const winrate = stats.played > 0 ? Math.round((stats.wins / stats.played) * 100) : 0;
+            document.getElementById("stat-winrate").textContent = `${winrate}%`;
+            document.getElementById("stat-streak").textContent = stats.streak;
+            document.getElementById("stat-maxstreak").textContent = stats.maxStreak;
+        }
+
+        function openModal(modalId) {
+            const modal = document.getElementById(modalId);
+            modal.classList.remove("hidden");
+            setTimeout(() => {
+                modal.classList.remove("opacity-0");
+            }, 10);
+        }
+
+        function closeModal(modalId) {
+            const modal = document.getElementById(modalId);
+            modal.classList.add("opacity-0");
+            setTimeout(() => {
+                modal.classList.add("hidden");
+            }, 200);
+        }
+    </script>
+</body>
+</html>
